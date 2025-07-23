@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Выбор точки на карте</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #sendBtn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background-color: #2a9d8f;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<button id="sendBtn">📍 Отправить точку</button>
+
+<script>
+  let map = L.map('map').setView([38.5598, 68.787], 12); 
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+  }).addTo(map);
+
+  let marker = null;
+  let selectedLatLng = null;
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      selectedLatLng = { lat, lng };
+      map.setView([lat, lng], 15);
+      marker = L.marker([lat, lng], { draggable: true }).addTo(map)
+        .bindPopup("Вы здесь").openPopup();
+
+      marker.on('dragend', function (e) {
+        selectedLatLng = marker.getLatLng();
+      });
+    });
+  }
+
+  map.on('click', function(e) {
+    selectedLatLng = e.latlng;
+
+    if (marker) {
+      marker.setLatLng(selectedLatLng);
+    } else {
+      marker = L.marker(selectedLatLng, { draggable: true }).addTo(map);
+    }
+
+    marker.bindPopup("Выбрано: " + selectedLatLng.lat.toFixed(5) + ", " + selectedLatLng.lng.toFixed(5)).openPopup();
+
+    marker.on('dragend', function (e) {
+      selectedLatLng = marker.getLatLng();
+    });
+  });
+
+  document.getElementById("sendBtn").addEventListener("click", function () {
+    if (!selectedLatLng) {
+      alert("Сначала выберите точку на карте.");
+      return;
+    }
+
+    const data = {
+      lat: selectedLatLng.lat,
+      lng: selectedLatLng.lng
+    };
+
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.sendData(JSON.stringify(data));
+    } else {
+      alert("WebApp API Telegram недоступен.");
+    }
+  });
+</script>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</body>
+</html>
